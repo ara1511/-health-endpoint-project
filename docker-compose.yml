@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  health-endpoint:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: health-endpoint-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - health-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.health.rule=Host(`health.localhost`)"
+      - "traefik.http.services.health.loadbalancer.server.port=3000"
+
+networks:
+  health-network:
+    driver: bridge

@@ -1,0 +1,45 @@
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Tests y coverage
+tests/
+coverage/
+*.test.js
+.nyc_output
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Documentation
+README.md
+CHANGELOG.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

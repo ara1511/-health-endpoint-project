@@ -1,0 +1,198 @@
+# GitLab CI/CD Configuration
+image: node:18-alpine
+
+# Definir etapas
+stages:
+  - install
+  - test
+  - security
+  - integration
+  - deploy
+
+# Cache para node_modules
+cache:
+  paths:
+    - node_modules/
+
+# Variables globales
+variables:
+  NODE_ENV: "test"
+  PORT: "3000"
+
+# Etapa 1: Instalar dependencias
+install_dependencies:
+  stage: install
+  script:
+    - echo "📦 Installing dependencies..."
+    - npm ci
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 hour
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Etapa 2: Tests unitarios
+unit_tests:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - echo "🧪 Running unit tests..."
+    - npm test
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+    paths:
+      - coverage/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Etapa 2: Tests con coverage
+coverage_tests:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - echo "📊 Running tests with coverage..."
+    - npm run test:coverage
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Etapa 3: Security audit
+security_audit:
+  stage: security
+  dependencies:
+    - install_dependencies
+  script:
+    - echo "🔒 Running security audit..."
+    - npm audit --audit-level moderate
+  allow_failure: true
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Etapa 4: Tests de integración
+integration_tests:
+  stage: integration
+  dependencies:
+    - install_dependencies
+  services:
+    - name: docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  before_script:
+    - apk add --no-cache curl bc
+  script:
+    - echo "🔄 Starting integration tests..."
+    
+    # Iniciar servidor
+    - npm start &
+    - SERVER_PID=$!
+    
+    # Esperar que el servidor esté listo
+    - |
+      for i in $(seq 1 30); do
+        if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+          echo "✅ Server is ready!"
+          break
+        fi
+        echo "⏳ Waiting for server... ($i/30)"
+        sleep 2
+      done
+    
+    # Test del health endpoint
+    - |
+      response=$(curl -s http://localhost:3000/health)
+      echo "Response: $response"
+      
+      if echo "$response" | grep -q '"status":"ok"'; then
+        echo "✅ Health check integration test passed!"
+      else
+        echo "❌ Health check integration test failed!"
+        exit 1
+      fi
+    
+    # Test de performance
+    - |
+      time=$(curl -o /dev/null -s -w '%{time_total}\n' http://localhost:3000/health)
+      echo "Response time: ${time}s"
+      
+      if [ $(echo "$time < 0.1" | bc) -eq 1 ]; then
+        echo "✅ Performance test passed! (${time}s)"
+      else
+        echo "❌ Performance test failed! (${time}s > 0.1s)"
+        exit 1
+      fi
+    
+    # Limpiar
+    - kill $SERVER_PID || true
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Etapa 5: Deploy (solo en main)
+deploy_production:
+  stage: deploy
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  dependencies:
+    - install_dependencies
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "🚀 Starting deployment..."
+    
+    # Build Docker image
+    - docker build -t health-endpoint:latest .
+    - docker tag health-endpoint:latest health-endpoint:$CI_COMMIT_SHA
+    
+    # Test deployment
+    - docker run -d -p 3000:3000 --name health-test health-endpoint:latest
+    - sleep 10
+    
+    # Verificar deployment
+    - |
+      response=$(curl -s http://localhost:3000/health)
+      if echo "$response" | grep -q '"status":"ok"'; then
+        echo "✅ Deployment test passed!"
+      else
+        echo "❌ Deployment test failed!"
+        exit 1
+      fi
+    
+    # Limpiar test
+    - docker stop health-test
+    - docker rm health-test
+    
+    - echo "🎉 Deployment completed successfully!"
+  only:
+    - main
+  when: manual  # Require manual approval for production
