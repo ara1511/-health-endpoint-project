@@ -1,6 +1,7 @@
 {
   "name": "health-endpoint-project",
   "version": "1.0.0",
+  "type": "module",
   "description": "Servicio con endpoint de health check",
   "main": "src/app.js",
   "scripts": {
@@ -9,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/ tests/"
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix"
   },
   "dependencies": {
     "express": "^4.18.2"
