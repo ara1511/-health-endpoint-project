@@ -2,14 +2,11 @@
   "name": "health-endpoint-project",
   "version": "1.0.0",
   "type": "module",
-  "description": "Servicio con endpoint de health check",
+  "description": "Health endpoint service",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix"
   },
@@ -17,20 +14,12 @@
     "express": "^4.18.2"
   },
   "devDependencies": {
-    "eslint": "^9.35.0",
-    "jest": "^29.7.0",
-    "nodemon": "^3.0.1",
-    "supertest": "^6.3.3"
+    "jest": "^29.0.0",
+    "supertest": "^6.0.0",
+    "eslint": "^8.0.0"
   },
   "jest": {
     "testEnvironment": "node",
-    "transform": {},
-    "extensionsToTreatAsEsm": [".js"],
-    "globals": {
-      "NODE_OPTIONS": "--experimental-vm-modules"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
-  } 
+    "transform": {}
+  }
 }
