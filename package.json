@@ -24,12 +24,13 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "src/**/*.js"
-    ]
+    "transform": {},
+    "extensionsToTreatAsEsm": [".js"],
+    "globals": {
+      "NODE_OPTIONS": "--experimental-vm-modules"
   },
   "keywords": [],
   "author": "",
   "license": "ISC"
+  } 
 }
